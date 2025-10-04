@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 import threading
 from flask import Flask
 import random
+import re
 
 load_dotenv() 
 
@@ -17,6 +18,7 @@ songs = os.getenv("SONG_LYRICS", [])
 question_desc = os.getenv("CUSTOM_QUESTION_DESC", "Get a lyrics question.")
 answer_desc = os.getenv("CUSTOM_ANSWER_DESC", "Send in the next lyric.")
 show_correct_answer_desc = os.getenv("CUSTOM_SHOW_CORRECT_ANSWER_DESC", "Show the correct answer.")
+file_path = os.getenv("FILE_PATH", "")
 
 intents = discord.Intents.default()
 intents.messages = True
@@ -31,27 +33,25 @@ question_session = {
     "last_activity": None,
 }
 
-def get_random_song_lyric(song: str) -> dict:
-    with open(f"{song}.txt", "r", encoding="utf-8") as f:
-        lines = [line.strip() for line in f if line.strip()]
+def to_snake_case(s: str) -> str:
+    s = s.lower()
+    s = re.sub(r'[^a-z0-9]+', '_', s)
+    s = s.strip('_')
+    return s
 
-        song = lines[0]
-        artist = lines[1]
-        idx = random.randint(2, len(lines) - 2)
-    
-        lyric = lines[idx]
-        correct_answer = lines[idx + 1]
+def get_random_lyric(song: str | None = None) -> dict:
+    if song is not None:
+        song = to_snake_case(song)
+        if f"{song}.txt" not in os.listdir(file_path):
+            song = None
 
-    return{
-        "song": song,
-        "artist": artist,
-        "lyric": lyric,
-        "correct_answer": correct_answer,
-    }
+    if not song:
+        files = [f for f in os.listdir(file_path) if os.path.isfile(os.path.join(file_path, f))]
+        file = os.path.join(file_path, random.choice(files))
+    else:
+        file = os.path.join(file_path, f"{song}.txt")
 
-def get_random_lyric() -> dict:
-    # pick random file out of all names
-    with open("song.txt", "r", encoding="utf-8") as f:
+    with open(file, "r", encoding="utf-8") as f:
         lines = [line.strip() for line in f if line.strip()]
 
         song = lines[0]
@@ -101,6 +101,21 @@ async def guess_the_next_lyric(interaction: discord.Interaction):
     question_session["active"] = True
     question_session["guesses"] = {}
     question_session["question"] = get_random_lyric()
+    question_session["last_activity"] = datetime.now(timezone.utc)
+
+    artist = question_session["question"]["artist"]
+    song = question_session["question"]["song"]
+    lyric = question_session["question"]["lyric"]
+    
+    await interaction.response.send_message(f"From {artist}'s {song}:\n{lyric}")
+
+@bot.tree.command(name="customguessthenextlyric", description=question_desc)
+async def custom_guess_the_next_lyric(interaction: discord.Interaction, response: str):
+    global question_session
+
+    question_session["active"] = True
+    question_session["guesses"] = {}
+    question_session["question"] = get_random_lyric(song=response)
     question_session["last_activity"] = datetime.now(timezone.utc)
 
     artist = question_session["question"]["artist"]
