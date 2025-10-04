@@ -14,7 +14,6 @@ load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 ALLOWED_CHANNEL_ID = int(os.getenv("CHANNEL_ID", "0"))
 
-songs = os.getenv("SONG_LYRICS", [])
 question_desc = os.getenv("CUSTOM_QUESTION_DESC", "Get a lyrics question.")
 answer_desc = os.getenv("CUSTOM_ANSWER_DESC", "Send in the next lyric.")
 show_correct_answer_desc = os.getenv("CUSTOM_SHOW_CORRECT_ANSWER_DESC", "Show the correct answer.")
