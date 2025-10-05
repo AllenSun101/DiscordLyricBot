@@ -17,6 +17,7 @@ ALLOWED_CHANNEL_ID = int(os.getenv("CHANNEL_ID", "0"))
 question_desc = os.getenv("CUSTOM_QUESTION_DESC", "Get a lyrics question.")
 answer_desc = os.getenv("CUSTOM_ANSWER_DESC", "Send in the next lyric.")
 show_correct_answer_desc = os.getenv("CUSTOM_SHOW_CORRECT_ANSWER_DESC", "Show the correct answer.")
+catalog_desc = os.getenv("CUSTOM_CATALOG_DESC", "Get catalog of songs.")
 file_path = os.getenv("FILE_PATH", "")
 
 intents = discord.Intents.default()
@@ -192,6 +193,56 @@ async def show_correct_answer(interaction: discord.Interaction):
     await interaction.response.send_message(result)
     
     question_session["last_activity"] = datetime.now(timezone.utc)
+
+@bot.tree.command(name="catalog", description=catalog_desc)
+async def catalog(interaction: discord.Interaction):
+    file_names = []
+    for f in os.listdir(file_path): 
+        if os.path.isfile(os.path.join(file_path, f)):
+            name = f[:-4].replace("_", " ").title()
+            file_names.append(name)
+
+    file_names.sort()
+
+    songs_per_page = 20
+    pages = [
+        file_names[i:i + songs_per_page]
+        for i in range(0, len(file_names), songs_per_page)
+    ]
+
+    class CatalogView(discord.ui.View):
+        def __init__(self):
+            super().__init__(timeout=None)
+            self.page = 0
+
+        async def update_message(self, interaction: discord.Interaction):
+            embed = discord.Embed(
+                title="🎵 Song Catalog",
+                description="\n".join(pages[self.page]),
+                color=discord.Color.blue()
+            )
+            embed.set_footer(text=f"Page {self.page + 1}/{len(pages)}")
+            await interaction.response.edit_message(embed=embed, view=self)
+
+        @discord.ui.button(label="⬅️ Prev", style=discord.ButtonStyle.secondary)
+        async def prev_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+            if self.page > 0:
+                self.page -= 1
+                await self.update_message(interaction)
+
+        @discord.ui.button(label="➡️ Next", style=discord.ButtonStyle.secondary)
+        async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+            if self.page < len(pages) - 1:
+                self.page += 1
+                await self.update_message(interaction)
+
+    first_embed = discord.Embed(
+        title="🎵 Song Catalog",
+        description="\n".join(pages[0]) if pages else "No songs found.",
+        color=discord.Color.blue()
+    )
+    first_embed.set_footer(text=f"Page 1/{len(pages)}")
+    await interaction.response.send_message(embed=first_embed, view=CatalogView())
 
 keep_alive()
 bot.run(DISCORD_TOKEN)
