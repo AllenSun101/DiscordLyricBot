@@ -109,6 +109,19 @@ async def guess_the_next_lyric(interaction: discord.Interaction):
     
     await interaction.response.send_message(f"From {artist}'s {song}:\n{lyric}")
 
+@bot.tree.command(name="hardguessthenextlyric", description=question_desc)
+async def hard_guess_the_next_lyric(interaction: discord.Interaction):
+    global question_session
+
+    question_session["active"] = True
+    question_session["guesses"] = {}
+    question_session["question"] = get_random_lyric()
+    question_session["last_activity"] = datetime.now(timezone.utc)
+
+    lyric = question_session["question"]["lyric"]
+    
+    await interaction.response.send_message(f"{lyric}")
+
 @bot.tree.command(name="customguessthenextlyric", description=question_desc)
 async def custom_guess_the_next_lyric(interaction: discord.Interaction, response: str):
     global question_session
@@ -182,13 +195,17 @@ async def show_correct_answer(interaction: discord.Interaction):
         reverse=True
     )
 
-    result = f"""
-    Correct answer was: {question_session["question"]["correct_answer"]}
-    {chr(10).join(
-        f"{i}. {user} — {data['guess']} (score: {data['score']}%)"
-        for i, (user, data) in enumerate(ranking, start=1)
-    )}
-    """
+    song = question_session["question"]["song"]
+    artist = question_session["question"]["artist"]
+
+    result = (
+        f"**From {artist}'s _{song}_**\n"
+        f"Correct answer was: **{question_session['question']['correct_answer']}**\n\n"
+        + "\n".join(
+            f"{'👑' if i == 1 else i}. {user.mention} — {data['guess']} (score: {data['score']}%)"
+            for i, (user, data) in enumerate(ranking, start=1)
+        )
+    )
 
     await interaction.response.send_message(result)
     
