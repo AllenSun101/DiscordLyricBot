@@ -202,7 +202,7 @@ async def show_correct_answer(interaction: discord.Interaction):
         f"**From {artist}'s _{song}_**\n"
         f"Correct answer was: **{question_session['question']['correct_answer']}**\n\n"
         + "\n".join(
-            f"{'👑' if i == 1 else i}. {user.mention} — {data['guess']} (score: {data['score']}%)"
+            f"{'👑' if i == 1 else i}. {user} — {data['guess']} (score: {data['score']}%)"
             for i, (user, data) in enumerate(ranking, start=1)
         )
     )
