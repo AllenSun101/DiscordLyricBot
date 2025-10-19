@@ -306,21 +306,20 @@ async def run_tournament(interaction: discord.Interaction):
         await interaction.channel.send(
             f"🎤 **Round {round_num} / {tournament_session['max_rounds']}**\n"
             f"From {artist}'s _{song}_:\n> {lyric}\n\n"
-            "⏰ You have **40 seconds**! Use `/tournamentguess` privately!"
+            f"This question is worth {ten_question_points[round_num]} points!\n"
+            "⏰ You have **40 seconds**! Use `/tournament_guess`!"
         )
 
-        # Guessing window
         await asyncio.sleep(40)
         tournament_session["accepting_guesses"] = False
-        await show_round_results(interaction)
 
-        # Show leaderboard for 20s
+        await show_round_results(interaction)
         await asyncio.sleep(20)
 
     await show_final_leaderboard(interaction)
     tournament_session["active"] = False
 
-@bot.tree.command(name="tournamentguess", description="Submit your lyric guess privately.")
+@bot.tree.command(name="tournament_guess", description="Submit your lyric guess privately.")
 async def guess(interaction: discord.Interaction, response: str):
     global tournament_session
 
@@ -337,15 +336,22 @@ async def guess(interaction: discord.Interaction, response: str):
         await interaction.response.send_message("Tournament is over!", ephemeral=True)
         return
 
-    user_id = interaction.user.id
+    user = interaction.user
     correct = tournament_session["question"]["correct_answer"]
     score = score_guess(correct, response)
 
-    user_data = tournament_session["participants"].setdefault(user_id, {"best_score": 0, "total_points": 0})
+    user_data = tournament_session["participants"].setdefault(user, {"best_score": 0, "total_score": 0})
     if score > user_data["best_score"]:
         user_data["best_score"] = score
 
-    await interaction.response.send_message(f"✅ Guess recorded! Your best score this round: {score}%", ephemeral=True)
+    await interaction.response.send_message(
+        f"Guess: {response}"
+        f"Score: {score}%"
+        f"Best score this round: {user_data["best_score"]}%", ephemeral=True)
+    await interaction.response.send_message(
+        f"{user} made a guess"
+        f"Score: {score}%"
+        f"{user}'s best score this round: {user_data["best_score"]}%")
 
 async def show_round_results(interaction: discord.Interaction): 
     global tournament_session
@@ -364,14 +370,14 @@ async def show_round_results(interaction: discord.Interaction):
     round = tournament_session["round"]
 
     result_lines = []
-    for i, (uid, data) in enumerate(ranking, start=1):
+    for i, (user, data) in enumerate(ranking, start=1):
         contribution = 0
         if total_round_score > 0:
-            contribution = (data["best_score"] / total_round_score) * ten_question_points[round]
+            contribution = round((data["best_score"] / total_round_score) * ten_question_points[round], 2)
 
         data["total_score"] += contribution
         result_lines.append(
-            f"{'👑' if i == 1 else i}. {uid} — {data['best_score']}%, total: {data['total_score']:.2f} pts (+{contribution:.1f})"
+            f"{'👑' if i == 1 else i}. {user} — {data['best_score']}%, total: {data['total_score']:.2f} pts (+{contribution:.2f})"
         )
 
         data["best_score"] = 0
@@ -393,8 +399,8 @@ async def show_final_leaderboard(interaction: discord.Interaction):
     )
 
     result_lines = [
-        f"{'👑' if i == 1 else i}. <@{uid}> — {data['total_score']:.2f} total points"
-        for i, (uid, data) in enumerate(ranking, start=1)
+        f"{'👑' if i == 1 else i}. {user} — {data['total_score']:.2f} total points"
+        for i, (user, data) in enumerate(ranking, start=1)
     ]
     result_text = "\n".join(result_lines)
 
