@@ -317,14 +317,14 @@ async def run_tournament(interaction: discord.Interaction):
             f"🎤 **Round {round_num} / {tournament_session['max_rounds']}**\n"
             f"From {artist}'s _{song}_:\n> {lyric}\n\n"
             f"This question is worth {question_points} points!\n"
-            "You have **40 seconds**! Use `/tournament_guess`!"
+            "You have **60 seconds**! Use `/tournament_guess`!"
         )
 
-        await asyncio.sleep(40)
+        await asyncio.sleep(60)
         tournament_session["accepting_guesses"] = False
 
         await show_round_results(interaction)
-        await asyncio.sleep(20)
+        await asyncio.sleep(10)
 
     await show_final_leaderboard(interaction)
     tournament_session["active"] = False
@@ -387,7 +387,7 @@ async def show_round_results(interaction: discord.Interaction):
 
         data["total_score"] += contribution
         result_lines.append(
-            f"{'👑' if i == 1 else i}. {user} — {data['best_score']}%, total: {data['total_score']:.2f} pts (+{contribution:.2f})"
+            f"{'👑' if i == 1 else i}. {user} — {data['best_score']}% -> {data['total_score']:.2f} pts (+{contribution:.2f})"
         )
 
         data["best_score"] = 0
