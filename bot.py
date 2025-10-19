@@ -8,6 +8,7 @@ import threading
 from flask import Flask
 import random
 import re
+import asyncio
 
 load_dotenv() 
 
@@ -26,11 +27,22 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+five_question_points = [15, 15, 20, 25, 25]
+ten_question_points = [5, 5, 5, 5, 10, 10, 15, 15, 15, 15]
 question_session = {
     "active": False,
     "guesses": {},
     "question": {},
     "last_activity": None,
+}
+tournament_session = {
+    "active": False,
+    "round": 0,
+    "max_rounds": 10,
+    "accepting_guesses": False,
+    "participants": {},
+    "question": None,
+    "end_time": None,
 }
 
 def to_snake_case(s: str) -> str:
@@ -260,6 +272,133 @@ async def catalog(interaction: discord.Interaction):
     )
     first_embed.set_footer(text=f"Page 1/{len(pages)}")
     await interaction.response.send_message(embed=first_embed, view=CatalogView())
+
+@bot.tree.command(name="start_tournament", description="Start a lyric guessing tournament (10 rounds)")
+async def start_tournament(interaction: discord.Interaction):
+    global tournament_session
+
+    if tournament_session["active"]:
+        await interaction.response.send_message("⚠️ A tournament is already running!", ephemeral=True)
+        return
+
+    tournament_session.update({
+        "active": True,
+        "round": 0,
+        "participants": {},
+    })
+
+    await interaction.response.send_message("🎶 Tournament starting! Get ready for 10 lyric challenges!")
+    await run_tournament(interaction)
+
+async def run_tournament(interaction: discord.Interaction):
+    global tournament_session
+
+    for round_num in range(1, tournament_session["max_rounds"] + 1):
+        tournament_session["round"] = round_num
+        tournament_session["accepting_guesses"] = True
+        tournament_session["question"] = get_random_lyric()
+        tournament_session["end_time"] = datetime.now(timezone.utc) + timedelta(seconds=40)
+
+        lyric = tournament_session["question"]["lyric"]
+        artist = tournament_session["question"]["artist"]
+        song = tournament_session["question"]["song"]
+
+        await interaction.channel.send(
+            f"🎤 **Round {round_num} / {tournament_session['max_rounds']}**\n"
+            f"From {artist}'s _{song}_:\n> {lyric}\n\n"
+            "⏰ You have **40 seconds**! Use `/tournamentguess` privately!"
+        )
+
+        # Guessing window
+        await asyncio.sleep(40)
+        tournament_session["accepting_guesses"] = False
+        await show_round_results(interaction)
+
+        # Show leaderboard for 20s
+        await asyncio.sleep(20)
+
+    await show_final_leaderboard(interaction)
+    tournament_session["active"] = False
+
+@bot.tree.command(name="tournamentguess", description="Submit your lyric guess privately.")
+async def guess(interaction: discord.Interaction, response: str):
+    global tournament_session
+
+    if not tournament_session["active"]:
+        await interaction.response.send_message("❌ No active tournament.", ephemeral=True)
+        return
+
+    if not tournament_session.get("accepting_guesses", False):
+        await interaction.response.send_message("🚫 Guessing is closed right now!", ephemeral=True)
+        return
+
+    now = datetime.now(timezone.utc)
+    if now > tournament_session["end_time"]:
+        await interaction.response.send_message("Tournament is over!", ephemeral=True)
+        return
+
+    user_id = interaction.user.id
+    correct = tournament_session["question"]["correct_answer"]
+    score = score_guess(correct, response)
+
+    user_data = tournament_session["participants"].setdefault(user_id, {"best_score": 0, "total_points": 0})
+    if score > user_data["best_score"]:
+        user_data["best_score"] = score
+
+    await interaction.response.send_message(f"✅ Guess recorded! Your best score this round: {score}%", ephemeral=True)
+
+async def show_round_results(interaction: discord.Interaction): 
+    global tournament_session
+
+    ranking = sorted(
+        tournament_session["participants"].items(),
+        key=lambda x: x[1]["best_score"],
+        reverse=True
+    )
+
+    if not ranking:
+        await interaction.channel.send("😅 No guesses this round!")
+        return
+
+    total_round_score = sum(data["best_score"] for _, data in ranking)
+    round = tournament_session["round"]
+
+    result_lines = []
+    for i, (uid, data) in enumerate(ranking, start=1):
+        contribution = 0
+        if total_round_score > 0:
+            contribution = (data["best_score"] / total_round_score) * ten_question_points[round]
+
+        data["total_score"] += contribution
+        result_lines.append(
+            f"{'👑' if i == 1 else i}. {uid} — {data['best_score']}%, total: {data['total_score']:.2f} pts (+{contribution:.1f})"
+        )
+
+        data["best_score"] = 0
+
+    result_text = "\n".join(result_lines)
+
+    await interaction.channel.send(
+        f"🏁 **Round {tournament_session['round']} Results!**\n"
+        f"🎵 Correct answer: {tournament_session['question']['correct_answer']}\n\n"
+        f"{result_text}"
+    )
+
+async def show_final_leaderboard(interaction: discord.Interaction):
+    global tournament_session
+    ranking = sorted(
+        tournament_session["participants"].items(),
+        key=lambda x: x[1]["total_score"],
+        reverse=True
+    )
+
+    result_lines = [
+        f"{'👑' if i == 1 else i}. <@{uid}> — {data['total_score']:.2f} total points"
+        for i, (uid, data) in enumerate(ranking, start=1)
+    ]
+    result_text = "\n".join(result_lines)
+
+    await interaction.channel.send(f"🏆 **Final Tournament Results!** 🏆\n{result_text}")
 
 keep_alive()
 bot.run(DISCORD_TOKEN)
