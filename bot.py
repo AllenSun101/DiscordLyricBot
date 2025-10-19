@@ -367,13 +367,13 @@ async def show_round_results(interaction: discord.Interaction):
         return
 
     total_round_score = sum(data["best_score"] for _, data in ranking)
-    round = tournament_session["round"]
+    round_num = tournament_session["round"]
 
     result_lines = []
     for i, (user, data) in enumerate(ranking, start=1):
         contribution = 0
         if total_round_score > 0:
-            contribution = round((data["best_score"] / total_round_score) * ten_question_points[round], 2)
+            contribution = round((data["best_score"] / total_round_score) * ten_question_points[round_num], 2)
 
         data["total_score"] += contribution
         result_lines.append(
