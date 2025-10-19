@@ -345,12 +345,12 @@ async def guess(interaction: discord.Interaction, response: str):
         user_data["best_score"] = score
 
     await interaction.response.send_message(
-        f"Guess: {response}"
-        f"Score: {score}%"
+        f"Guess: {response}\n"
+        f"Score: {score}%\n"
         f"Best score this round: {user_data["best_score"]}%", ephemeral=True)
-    await interaction.response.send_message(
-        f"{user} made a guess"
-        f"Score: {score}%"
+    await interaction.followup.send(
+        f"{user} made a guess\n"
+        f"Score: {score}%\n"
         f"{user}'s best score this round: {user_data["best_score"]}%")
 
 async def show_round_results(interaction: discord.Interaction): 
