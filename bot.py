@@ -1,6 +1,7 @@
 from rapidfuzz import fuzz
 import discord
 from discord.ext import commands, tasks
+from discord import app_commands
 import os
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
@@ -273,8 +274,12 @@ async def catalog(interaction: discord.Interaction):
     first_embed.set_footer(text=f"Page 1/{len(pages)}")
     await interaction.response.send_message(embed=first_embed, view=CatalogView())
 
-@bot.tree.command(name="start_tournament", description="Start a lyric guessing tournament (10 rounds)")
-async def start_tournament(interaction: discord.Interaction):
+@bot.tree.command(name="start_tournament", description="Start a lyric guessing tournament")
+@app_commands.choices(total_rounds=[
+    app_commands.Choice(name="5", value=5),
+    app_commands.Choice(name="10", value=10)
+])
+async def start_tournament(interaction: discord.Interaction, total_rounds: int):
     global tournament_session
 
     if tournament_session["active"]:
@@ -285,6 +290,7 @@ async def start_tournament(interaction: discord.Interaction):
         "active": True,
         "round": 0,
         "participants": {},
+        "max_rounds": total_rounds,
     })
 
     await interaction.response.send_message("🎶 Tournament starting! Get ready for 10 lyric challenges!")
@@ -306,7 +312,7 @@ async def run_tournament(interaction: discord.Interaction):
         await interaction.channel.send(
             f"🎤 **Round {round_num} / {tournament_session['max_rounds']}**\n"
             f"From {artist}'s _{song}_:\n> {lyric}\n\n"
-            f"This question is worth {ten_question_points[round_num]} points!\n"
+            f"This question is worth {ten_question_points[round_num-1]} points!\n"
             "⏰ You have **40 seconds**! Use `/tournament_guess`!"
         )
 
@@ -345,13 +351,9 @@ async def guess(interaction: discord.Interaction, response: str):
         user_data["best_score"] = score
 
     await interaction.response.send_message(
-        f"Guess: {response}\n"
         f"Score: {score}%\n"
         f"Best score this round: {user_data["best_score"]}%", ephemeral=True)
-    await interaction.followup.send(
-        f"{user} made a guess\n"
-        f"Score: {score}%\n"
-        f"{user}'s best score this round: {user_data["best_score"]}%")
+    await interaction.followup.send(f"{user} made a guess: {score}%")
 
 async def show_round_results(interaction: discord.Interaction): 
     global tournament_session
@@ -373,7 +375,7 @@ async def show_round_results(interaction: discord.Interaction):
     for i, (user, data) in enumerate(ranking, start=1):
         contribution = 0
         if total_round_score > 0:
-            contribution = round((data["best_score"] / total_round_score) * ten_question_points[round_num], 2)
+            contribution = round((data["best_score"] / total_round_score) * ten_question_points[round_num-1], 2)
 
         data["total_score"] += contribution
         result_lines.append(
