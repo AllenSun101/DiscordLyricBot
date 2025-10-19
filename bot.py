@@ -293,7 +293,7 @@ async def start_tournament(interaction: discord.Interaction, total_rounds: int):
         "max_rounds": total_rounds,
     })
 
-    await interaction.response.send_message("🎶 Tournament starting! Get ready for 10 lyric challenges!")
+    await interaction.response.send_message(f"🎶 Tournament starting! Get ready for {total_rounds} lyric challenges!")
     await run_tournament(interaction)
 
 async def run_tournament(interaction: discord.Interaction):
@@ -309,11 +309,15 @@ async def run_tournament(interaction: discord.Interaction):
         artist = tournament_session["question"]["artist"]
         song = tournament_session["question"]["song"]
 
+        question_points = ten_question_points[round_num-1]
+        if tournament_session["max_rounds"] == 5:
+            question_points = five_question_points[round_num-1]
+
         await interaction.channel.send(
             f"🎤 **Round {round_num} / {tournament_session['max_rounds']}**\n"
             f"From {artist}'s _{song}_:\n> {lyric}\n\n"
-            f"This question is worth {ten_question_points[round_num-1]} points!\n"
-            "⏰ You have **40 seconds**! Use `/tournament_guess`!"
+            f"This question is worth {question_points} points!\n"
+            "You have **40 seconds**! Use `/tournament_guess`!"
         )
 
         await asyncio.sleep(40)
@@ -334,7 +338,7 @@ async def guess(interaction: discord.Interaction, response: str):
         return
 
     if not tournament_session.get("accepting_guesses", False):
-        await interaction.response.send_message("🚫 Guessing is closed right now!", ephemeral=True)
+        await interaction.response.send_message("Guessing is closed right now!", ephemeral=True)
         return
 
     now = datetime.now(timezone.utc)
@@ -371,11 +375,15 @@ async def show_round_results(interaction: discord.Interaction):
     total_round_score = sum(data["best_score"] for _, data in ranking)
     round_num = tournament_session["round"]
 
+    question_points = ten_question_points[round_num-1]
+    if tournament_session["max_rounds"] == 5:
+        question_points = five_question_points[round_num-1]
+
     result_lines = []
     for i, (user, data) in enumerate(ranking, start=1):
         contribution = 0
         if total_round_score > 0:
-            contribution = round((data["best_score"] / total_round_score) * ten_question_points[round_num-1], 2)
+            contribution = round((data["best_score"] / total_round_score) * question_points, 2)
 
         data["total_score"] += contribution
         result_lines.append(
@@ -387,8 +395,8 @@ async def show_round_results(interaction: discord.Interaction):
     result_text = "\n".join(result_lines)
 
     await interaction.channel.send(
-        f"🏁 **Round {tournament_session['round']} Results!**\n"
-        f"🎵 Correct answer: {tournament_session['question']['correct_answer']}\n\n"
+        f"**Round {tournament_session['round']} Results!**\n"
+        f"Correct answer: {tournament_session['question']['correct_answer']}\n\n"
         f"{result_text}"
     )
 
@@ -406,7 +414,7 @@ async def show_final_leaderboard(interaction: discord.Interaction):
     ]
     result_text = "\n".join(result_lines)
 
-    await interaction.channel.send(f"🏆 **Final Tournament Results!** 🏆\n{result_text}")
+    await interaction.channel.send(f"**Final Tournament Results!**\n{result_text}")
 
 keep_alive()
 bot.run(DISCORD_TOKEN)
