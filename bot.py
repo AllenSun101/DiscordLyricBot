@@ -303,7 +303,7 @@ async def run_tournament(interaction: discord.Interaction):
         tournament_session["round"] = round_num
         tournament_session["accepting_guesses"] = True
         tournament_session["question"] = get_random_lyric()
-        tournament_session["end_time"] = datetime.now(timezone.utc) + timedelta(seconds=40)
+        tournament_session["end_time"] = datetime.now(timezone.utc) + timedelta(seconds=60)
 
         lyric = tournament_session["question"]["lyric"]
         artist = tournament_session["question"]["artist"]
@@ -343,7 +343,7 @@ async def guess(interaction: discord.Interaction, response: str):
 
     now = datetime.now(timezone.utc)
     if now > tournament_session["end_time"]:
-        await interaction.response.send_message("Tournament is over!", ephemeral=True)
+        await interaction.response.send_message("Guessing is closed right now!", ephemeral=True)
         return
 
     user = interaction.user
