@@ -138,6 +138,8 @@ async def guess_the_next_lyric(interaction: discord.Interaction):
 async def hard_guess_the_next_lyric(interaction: discord.Interaction):
     global question_session
 
+    await keep_alive_ping()
+
     question_session["active"] = True
     question_session["guesses"] = {}
     question_session["question"] = get_random_lyric()
@@ -150,6 +152,8 @@ async def hard_guess_the_next_lyric(interaction: discord.Interaction):
 @bot.tree.command(name="customguessthenextlyric", description=question_desc)
 async def custom_guess_the_next_lyric(interaction: discord.Interaction, response: str):
     global question_session
+
+    await keep_alive_ping()
 
     question_session["active"] = True
     question_session["guesses"] = {}
@@ -293,6 +297,8 @@ async def catalog(interaction: discord.Interaction):
 ])
 async def start_tournament(interaction: discord.Interaction, total_rounds: int):
     global tournament_session
+
+    await keep_alive_ping()
 
     if tournament_session["active"]:
         await interaction.response.send_message("⚠️ A tournament is already running!", ephemeral=True)
