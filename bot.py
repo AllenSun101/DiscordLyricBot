@@ -10,6 +10,7 @@ from flask import Flask
 import random
 import re
 import asyncio
+import aiohttp
 
 load_dotenv() 
 
@@ -21,6 +22,7 @@ answer_desc = os.getenv("CUSTOM_ANSWER_DESC", "Send in the next lyric.")
 show_correct_answer_desc = os.getenv("CUSTOM_SHOW_CORRECT_ANSWER_DESC", "Show the correct answer.")
 catalog_desc = os.getenv("CUSTOM_CATALOG_DESC", "Get catalog of songs.")
 file_path = os.getenv("FILE_PATH", "")
+deployment_url = os.getenv("DEPLOYMENT_URL", "")
 
 intents = discord.Intents.default()
 intents.messages = True
@@ -107,9 +109,19 @@ def keep_alive():
     t = threading.Thread(target=run_flask)
     t.start()
 
+async def keep_alive_ping():
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(deployment_url) as resp:
+                print(f"Pinged self ({resp.status})")
+    except Exception as e:
+        print(f"Ping failed: {e}")
+
 @bot.tree.command(name="guessthenextlyric", description=question_desc)
 async def guess_the_next_lyric(interaction: discord.Interaction):
     global question_session
+
+    await keep_alive_ping()
 
     question_session["active"] = True
     question_session["guesses"] = {}
