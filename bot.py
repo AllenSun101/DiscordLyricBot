@@ -37,6 +37,7 @@ question_session = {
     "guesses": {},
     "question": {},
     "last_activity": None,
+    "locked": False,
 }
 tournament_session = {
     "active": False,
@@ -123,10 +124,15 @@ async def guess_the_next_lyric(interaction: discord.Interaction):
 
     await keep_alive_ping()
 
+    if question_session["locked"]:
+        await interaction.response.send_message(f"A question is already in effect.")
+        return
+
     question_session["active"] = True
     question_session["guesses"] = {}
     question_session["question"] = get_random_lyric()
     question_session["last_activity"] = datetime.now(timezone.utc)
+    question_session["locked"] = True
 
     artist = question_session["question"]["artist"]
     song = question_session["question"]["song"]
@@ -140,10 +146,15 @@ async def hard_guess_the_next_lyric(interaction: discord.Interaction):
 
     await keep_alive_ping()
 
+    if question_session["locked"]:
+        await interaction.response.send_message(f"A question is already in effect.")
+        return
+
     question_session["active"] = True
     question_session["guesses"] = {}
     question_session["question"] = get_random_lyric()
     question_session["last_activity"] = datetime.now(timezone.utc)
+    question_session["locked"] = True
 
     lyric = question_session["question"]["lyric"]
     
@@ -155,10 +166,15 @@ async def custom_guess_the_next_lyric(interaction: discord.Interaction, response
 
     await keep_alive_ping()
 
+    if question_session["locked"]:
+        await interaction.response.send_message(f"A question is already in effect.")
+        return
+
     question_session["active"] = True
     question_session["guesses"] = {}
     question_session["question"] = get_random_lyric(song=response)
     question_session["last_activity"] = datetime.now(timezone.utc)
+    question_session["locked"] = True
 
     artist = question_session["question"]["artist"]
     song = question_session["question"]["song"]
@@ -175,6 +191,7 @@ async def check_timeout():
             question_session["question"] = None
             question_session["guesses"] = None
             question_session["last_activity"] = None
+            question_session["locked"] = False
             print("Session ended due to inactivity.")
 
 @bot.event
@@ -239,6 +256,7 @@ async def show_correct_answer(interaction: discord.Interaction):
     await interaction.response.send_message(result)
     
     question_session["last_activity"] = datetime.now(timezone.utc)
+    question_session["locked"] = False
 
 @bot.tree.command(name="catalog", description=catalog_desc)
 async def catalog(interaction: discord.Interaction):
