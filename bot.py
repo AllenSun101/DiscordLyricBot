@@ -292,13 +292,17 @@ async def catalog(interaction: discord.Interaction):
         async def prev_page(self, interaction: discord.Interaction, button: discord.ui.Button):
             if self.page > 0:
                 self.page -= 1
-                await self.update_message(interaction)
+            elif self.page == 0:
+                self.page = len(pages) - 1
+            await self.update_message(interaction)
 
         @discord.ui.button(label="➡️ Next", style=discord.ButtonStyle.secondary)
         async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
             if self.page < len(pages) - 1:
                 self.page += 1
-                await self.update_message(interaction)
+            elif self.page == len(pages) - 1:
+                self.page = 0
+            await self.update_message(interaction)
 
     first_embed = discord.Embed(
         title="🎵 Song Catalog",
