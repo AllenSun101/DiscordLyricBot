@@ -457,7 +457,7 @@ async def show_final_leaderboard(interaction: discord.Interaction):
     await interaction.channel.send(f"**Final Tournament Results!**\n{result_text}")
 
 @bot.tree.command(name="get_lyrics", description="Get lyrics")
-async def get_lyrics(interaction: discord.Interaction, song: str):
+async def get_lyrics(interaction: discord.Interaction, response: str):
     global question_session
     global tournament_session
 
@@ -467,7 +467,7 @@ async def get_lyrics(interaction: discord.Interaction, song: str):
         await interaction.response.send_message(f"No cheating!")
         return
     
-    song = to_snake_case(song)
+    song = to_snake_case(response)
     if f"{song}.txt" not in os.listdir(file_path):
         await interaction.response.send_message(f"Song does not exist in catalog.")
         return
@@ -491,7 +491,7 @@ async def get_lyrics(interaction: discord.Interaction, song: str):
 
         async def update_message(self, interaction: discord.Interaction):
             embed = discord.Embed(
-                title=f"{song}",
+                title=f"{response}",
                 description="\n".join(pages[self.page]),
                 color=discord.Color.blue()
             )
@@ -515,7 +515,7 @@ async def get_lyrics(interaction: discord.Interaction, song: str):
             await self.update_message(interaction)
 
     first_embed = discord.Embed(
-        title=f"{song}",
+        title=f"{response}",
         description="\n".join(pages[0]) if pages else "No lyrics found.",
         color=discord.Color.blue()
     )
