@@ -476,6 +476,7 @@ async def get_lyrics(interaction: discord.Interaction, response: str):
 
     with open(file, "r", encoding="utf-8") as f:
         lines = [line.strip() for line in f if line.strip()]
+        song_title = lines[0]
         lyrics = lines[2:]
 
     lines_per_page = 20
@@ -491,7 +492,7 @@ async def get_lyrics(interaction: discord.Interaction, response: str):
 
         async def update_message(self, interaction: discord.Interaction):
             embed = discord.Embed(
-                title=f"{response}",
+                title=f"{song_title}",
                 description="\n".join(pages[self.page]),
                 color=discord.Color.blue()
             )
@@ -515,7 +516,7 @@ async def get_lyrics(interaction: discord.Interaction, response: str):
             await self.update_message(interaction)
 
     first_embed = discord.Embed(
-        title=f"{response}",
+        title=f"{song_title}",
         description="\n".join(pages[0]) if pages else "No lyrics found.",
         color=discord.Color.blue()
     )
