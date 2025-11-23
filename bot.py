@@ -456,5 +456,71 @@ async def show_final_leaderboard(interaction: discord.Interaction):
 
     await interaction.channel.send(f"**Final Tournament Results!**\n{result_text}")
 
+@bot.tree.command(name="get_lyrics", description="Get lyrics")
+async def get_lyrics(interaction: discord.Interaction, song: str):
+    global question_session
+    global tournament_session
+
+    await keep_alive_ping()
+
+    if question_session["locked"] or tournament_session["active"]:
+        await interaction.response.send_message(f"No cheating!")
+        return
+    
+    song = to_snake_case(song)
+    if f"{song}.txt" not in os.listdir(file_path):
+        await interaction.response.send_message(f"Song does not exist in catalog.")
+        return
+
+    file = os.path.join(file_path, f"{song}.txt")
+
+    with open(file, "r", encoding="utf-8") as f:
+        lines = [line.strip() for line in f if line.strip()]
+        lyrics = lines[2:]
+
+    lines_per_page = 20
+    pages = [
+        lyrics[i:i + lines_per_page]
+        for i in range(0, len(lyrics), lines_per_page)
+    ]
+
+    class CatalogView(discord.ui.View):
+        def __init__(self):
+            super().__init__(timeout=None)
+            self.page = 0
+
+        async def update_message(self, interaction: discord.Interaction):
+            embed = discord.Embed(
+                title=f"{song}",
+                description="\n".join(pages[self.page]),
+                color=discord.Color.blue()
+            )
+            embed.set_footer(text=f"Page {self.page + 1}/{len(pages)}")
+            await interaction.response.edit_message(embed=embed, view=self)
+
+        @discord.ui.button(label="⬅️ Prev", style=discord.ButtonStyle.secondary)
+        async def prev_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+            if self.page > 0:
+                self.page -= 1
+            elif self.page == 0:
+                self.page = len(pages) - 1
+            await self.update_message(interaction)
+
+        @discord.ui.button(label="➡️ Next", style=discord.ButtonStyle.secondary)
+        async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+            if self.page < len(pages) - 1:
+                self.page += 1
+            elif self.page == len(pages) - 1:
+                self.page = 0
+            await self.update_message(interaction)
+
+    first_embed = discord.Embed(
+        title=f"{song}",
+        description="\n".join(pages[0]) if pages else "No lyrics found.",
+        color=discord.Color.blue()
+    )
+    first_embed.set_footer(text=f"Page 1/{len(pages)}")
+    await interaction.response.send_message(embed=first_embed, view=CatalogView())
+
 keep_alive()
 bot.run(DISCORD_TOKEN)
